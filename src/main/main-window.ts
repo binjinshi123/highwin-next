@@ -1,0 +1,146 @@
+import { is } from '@electron-toolkit/utils'
+import { app, BaseWindow, ipcMain } from 'electron'
+import icon from '../../resources/icon.ico?asset'
+import { restoreTabs, showContent } from './tabs'
+import { createToolbar, toolbarHeight } from './toolbar'
+import { disposeSearchWindow } from './global-search'
+import { disposeMenuWindow } from './handlers/menu-handler'
+import { logoutApp } from './handlers/auth-handler'
+import { createFooter } from './footer'
+
+let baseWindow: BaseWindow | null = null
+let currentTheme = 'light'
+
+/**
+ * Initializes the main application window with a splash screen.
+ * Creates the window, configures settings, loads toolbar and content,
+ * checks for updates, handles authentication, and restores previous window state.
+ * Must only be called once during application startup.
+ */
+export async function initializeMainWindow(): Promise<void> {
+  baseWindow = new BaseWindow({
+    width: 1200,
+    minWidth: 600,
+    height: 800,
+    minHeight: 400,
+    show: false,
+    frame: false,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#f9fafb',
+      height: toolbarHeight
+    },
+    // titleBarOverlay: false,
+    backgroundColor: '#fff',
+    // backgroundMaterial: 'auto', // 'mica' | 'acrylic'
+    icon: icon
+    // ...(process.platform === 'darwin' ? {
+    //   trafficLightPosition: {
+    //     x: 20,
+    //     y: 9
+    //   }
+    // } : {})
+  })
+
+  // Set the main window, Must be called here before any other functions.
+  setupMainWindowEventHandlers()
+
+  const [toolbar, mainContent, footer] = await Promise.all([
+    createToolbar(),
+    restoreTabs({ restore: false }), // 红楹前端页面跳转后丢失 token，所以暂时不保存
+    createFooter()
+  ])
+
+  if (mainContent === null || toolbar === null) {
+    console.error('Failed to load toolbar or mainContent')
+    return
+  }
+
+  baseWindow.contentView.addChildView(toolbar!)
+  baseWindow.contentView.addChildView(mainContent)
+  baseWindow.contentView.addChildView(footer!)
+
+  showContent(mainContent)
+  mainContent.webContents.focus()
+
+  showWindow()
+}
+
+/**
+ * Configures event handlers for window resizing, movement, and application lifecycle events.
+ * Handles window state persistence and platform-specific behaviors (Mac/Windows).
+ * @param baseWindow - The main application window instance
+ */
+function setupMainWindowEventHandlers(): void {
+  app.on('activate', () => {
+    showWindow()
+  })
+
+  let isLoggingOut = false
+
+  app.on('before-quit', async (event: Electron.Event) => {
+    if (!isLoggingOut) {
+      event.preventDefault()
+      isLoggingOut = true
+      // saveTabs()
+      await logoutApp()
+      app.quit()
+    }
+  })
+
+  app.on('will-quit', () => {
+    console.log('app will-quit')
+  })
+
+  app.on('quit', () => {
+    console.log('app quit')
+  })
+
+  baseWindow?.on('closed', () => {
+    disposeSearchWindow()
+    disposeMenuWindow()
+  })
+
+  ipcMain.on('theme-changed', (_event, theme: 'light' | 'dark') => {
+    if (!baseWindow) return
+    currentTheme = theme
+    const isDarkTheme = theme === 'dark'
+    baseWindow.setBackgroundColor(isDarkTheme ? '#171717' : '#fff')
+    baseWindow.setTitleBarOverlay({
+      color: isDarkTheme ? '#171717' : '#f9fafb', // bg-sidebar
+      symbolColor: isDarkTheme ? '#e5e5e5' : '#333' // text-sidebar-foreground
+    })
+  })
+}
+
+/**
+ * Returns the main application window instance.
+ * @returns The main BaseWindow instance or null if not initialized
+ */
+export function getBaseWindow(): BaseWindow | null {
+  return baseWindow
+}
+
+export function getCurrentTheme(): string {
+  return currentTheme
+}
+
+/**
+ * Shows the main application window.
+ * Handles different behavior for development and production environments.
+ */
+export function showWindow(): void {
+  if (!baseWindow) {
+    return
+  }
+
+  //? This is to prevent the window from gaining focus everytime we make a change in code.
+  if (!is.dev && !process.env['ELECTRON_RENDERER_URL']) {
+    baseWindow!.show()
+    return
+  }
+
+  if (!baseWindow.isVisible()) {
+    baseWindow!.show()
+  }
+}
