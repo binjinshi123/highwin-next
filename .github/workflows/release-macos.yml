@@ -50,9 +50,14 @@ jobs:
       - name: Package macOS app
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          # app-builder-lib 优先读 NPM_CONFIG_* / npm_config_*，.npmrc 会覆盖 ELECTRON_BUILDER_BINARIES_MIRROR
           NPM_CONFIG_ELECTRON_BUILDER_BINARIES_MIRROR: https://github.com/electron-userland/electron-builder-binaries/releases/download/
-        run: npx electron-builder --mac --publish never
+        shell: bash
+        run: |
+          # .npmrc 的 electron_mirror 会变成 npm_config_electron_mirror；@electron/get 优先用它，
+          # 覆盖 dmg 下载里传入的 GitHub URL，导致仍走 npmmirror/cdn 404。CI 上临时去掉项目级配置。
+          npm config delete electron_mirror --location=project 2>/dev/null || true
+          npm config delete electron_builder_binaries_mirror --location=project 2>/dev/null || true
+          npx electron-builder --mac --publish never
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
