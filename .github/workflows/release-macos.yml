@@ -50,8 +50,8 @@ jobs:
       - name: Package macOS app
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          # npmmirror 常缺少新版 dmg-builder 等二进制，CI 上改用官方 release，避免 404
-          ELECTRON_BUILDER_BINARIES_MIRROR: https://github.com/electron-userland/electron-builder-binaries/releases/download/
+          # app-builder-lib 优先读 NPM_CONFIG_* / npm_config_*，.npmrc 会覆盖 ELECTRON_BUILDER_BINARIES_MIRROR
+          NPM_CONFIG_ELECTRON_BUILDER_BINARIES_MIRROR: https://github.com/electron-userland/electron-builder-binaries/releases/download/
         run: npx electron-builder --mac --publish never
 
       - name: Upload build artifacts
