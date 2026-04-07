@@ -31,7 +31,11 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
           NPM_CONFIG_ELECTRON_BUILDER_BINARIES_MIRROR: https://github.com/electron-userland/electron-builder-binaries/releases/download/
-        run: npx electron-builder --mac --publish never
+        shell: bash
+        run: |
+          npm config delete electron_mirror --location=project 2>/dev/null || true
+          npm config delete electron_builder_binaries_mirror --location=project 2>/dev/null || true
+          npx electron-builder --mac --publish never
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v6
