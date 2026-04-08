@@ -11,6 +11,22 @@ import { createFooter } from './footer'
 let baseWindow: BaseWindow | null = null
 let currentTheme = 'light'
 
+function updateTitleBarOverlay(theme: 'light' | 'dark'): void {
+  if (process.platform !== 'win32') return
+  if (!baseWindow) return
+  const hasTitleBarOverlay =
+    typeof (baseWindow as unknown as { setTitleBarOverlay?: unknown }).setTitleBarOverlay === 'function'
+
+  if (!hasTitleBarOverlay) return
+
+  ;(baseWindow as unknown as {
+    setTitleBarOverlay: (options: { color: string; symbolColor: string }) => void
+  }).setTitleBarOverlay({
+    color: theme === 'dark' ? '#171717' : '#f9fafb',
+    symbolColor: theme === 'dark' ? '#e5e5e5' : '#333'
+  })
+}
+
 /**
  * Initializes the main application window with a splash screen.
  * Creates the window, configures settings, loads toolbar and content,
@@ -18,28 +34,37 @@ let currentTheme = 'light'
  * Must only be called once during application startup.
  */
 export async function initializeMainWindow(): Promise<void> {
+  const isMac = process.platform === 'darwin'
+  const isWindows = process.platform === 'win32'
+
   baseWindow = new BaseWindow({
     width: 1200,
     minWidth: 600,
     height: 800,
     minHeight: 400,
     show: false,
-    frame: false,
-    titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      color: '#f9fafb',
-      height: toolbarHeight
-    },
-    // titleBarOverlay: false,
+    frame: !isMac,
+    ...(isMac
+      ? {
+          titleBarStyle: 'hiddenInset' as const,
+          trafficLightPosition: {
+            x: 20,
+            y: 9
+          }
+        }
+      : {
+          titleBarStyle: 'hidden' as const,
+          ...(isWindows
+            ? {
+                titleBarOverlay: {
+                  color: '#f9fafb',
+                  height: toolbarHeight
+                }
+              }
+            : {})
+        }),
     backgroundColor: '#fff',
-    // backgroundMaterial: 'auto', // 'mica' | 'acrylic'
     icon: icon
-    // ...(process.platform === 'darwin' ? {
-    //   trafficLightPosition: {
-    //     x: 20,
-    //     y: 9
-    //   }
-    // } : {})
   })
 
   // Set the main window, Must be called here before any other functions.
@@ -106,10 +131,7 @@ function setupMainWindowEventHandlers(): void {
     currentTheme = theme
     const isDarkTheme = theme === 'dark'
     baseWindow.setBackgroundColor(isDarkTheme ? '#171717' : '#fff')
-    baseWindow.setTitleBarOverlay({
-      color: isDarkTheme ? '#171717' : '#f9fafb', // bg-sidebar
-      symbolColor: isDarkTheme ? '#e5e5e5' : '#333' // text-sidebar-foreground
-    })
+    updateTitleBarOverlay(theme)
   })
 }
 
