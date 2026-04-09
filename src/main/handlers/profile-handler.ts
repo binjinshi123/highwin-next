@@ -4,7 +4,6 @@ import { getRootUrl } from '../url-helpers'
 import { NavigationRoutes } from '../navigation-routes'
 import { getUser, logout } from './auth-handler'
 import { getToolbarHeight } from '../toolbar'
-import { isLiveWindow } from '../is-live-window'
 
 let profileWindow: BrowserWindow | null
 
@@ -12,10 +11,6 @@ export const initProfileIpcHandlers = (): void => {
   ipcMain.handle('show-profile', () => {
     const user = getUser()
     if (!user) return
-    if (isLiveWindow(profileWindow)) {
-      showWindow()
-      return
-    }
     createWindow()
   })
   ipcMain.handle('user:logout', () => {
@@ -25,9 +20,7 @@ export const initProfileIpcHandlers = (): void => {
 }
 
 export function disposeWindow(): void {
-  if (isLiveWindow(profileWindow)) {
-    profileWindow.close()
-  }
+  profileWindow?.close()
   profileWindow = null
 }
 
@@ -60,8 +53,6 @@ function createWindow(): void {
 }
 
 function showWindow(): void {
-  if (!isLiveWindow(profileWindow)) return
-
   const mainWindow = BaseWindow.getFocusedWindow()
   if (!mainWindow) return
 
@@ -70,7 +61,7 @@ function showWindow(): void {
   const menuX = mainBounds.x + mainBounds.width - profileWidth - 100
   const menuY = mainBounds.y + getToolbarHeight() + 2
 
-  profileWindow.setPosition(Math.floor(menuX), Math.floor(menuY))
+  profileWindow?.setPosition(Math.floor(menuX), Math.floor(menuY))
 
-  profileWindow.show()
+  profileWindow?.show()
 }
