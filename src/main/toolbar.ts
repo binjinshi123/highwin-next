@@ -69,6 +69,10 @@ export function getToolbar(): WebContentsView | null {
   return toolbarView
 }
 
+export function resetToolbar(): void {
+  toolbarView = null
+}
+
 /**
  * Resizes the toolbar to match the window width while maintaining fixed height.
  * Should be called when the window is resized to ensure toolbar fills the width.
