@@ -29,7 +29,7 @@ if (!gotTheLock) {
   app.on('second-instance', (_, commandLine) => {
     // 当第二个实例试图打开时，聚焦到第一个实例的窗口
     const mainWindow = getBaseWindow()
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) mainWindow.restore()
       mainWindow.focus()
     }
