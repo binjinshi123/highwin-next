@@ -8,7 +8,6 @@ import { highwinUrlMap } from '@shared/config/highwin-urls'
 import { URLs } from '@shared/config/url-config'
 import { getCurrentTheme } from '../main-window'
 import { getToolbarHeight } from '../toolbar'
-import { isLiveWindow } from '../is-live-window'
 
 let menuWindow: BrowserWindow | null
 
@@ -17,7 +16,7 @@ export const initMenuIpcHandlers = (): void => {
     const user = getUser()
     if (!user) return
 
-    if (isLiveWindow(menuWindow)) {
+    if (menuWindow) {
       showMenuWindow()
     } else {
       createMenuWindow()
@@ -38,14 +37,12 @@ export const initMenuIpcHandlers = (): void => {
 }
 
 export function disposeMenuWindow(): void {
-  if (isLiveWindow(menuWindow)) {
-    menuWindow.close()
-  }
+  menuWindow?.close()
   menuWindow = null
 }
 
 export function precreateMenuWindow(): void {
-  if (!isLiveWindow(menuWindow)) {
+  if (!menuWindow) {
     createMenuWindow()
   }
 }
@@ -78,8 +75,6 @@ function createMenuWindow(): void {
 }
 
 function showMenuWindow(): void {
-  if (!isLiveWindow(menuWindow)) return
-
   const mainWindow = BaseWindow.getFocusedWindow()
   if (!mainWindow) return
 
@@ -87,9 +82,9 @@ function showMenuWindow(): void {
   const menuX = mainBounds.x + 1
   const menuY = mainBounds.y + getToolbarHeight()
 
-  menuWindow.setPosition(Math.floor(menuX), Math.floor(menuY))
+  menuWindow?.setPosition(Math.floor(menuX), Math.floor(menuY))
 
-  menuWindow.show()
+  menuWindow?.show()
 }
 
 function toChartParams(urlSearchParams: string): string {
