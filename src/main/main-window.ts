@@ -1,28 +1,25 @@
 import { is } from '@electron-toolkit/utils'
 import { app, BaseWindow, ipcMain } from 'electron'
 import icon from '../../resources/icon.ico?asset'
-import { resetTabsState, restoreTabs, showContent } from './tabs'
-import { createToolbar, resetToolbar, toolbarHeight } from './toolbar'
+import { restoreTabs, showContent } from './tabs'
+import { createToolbar, toolbarHeight } from './toolbar'
 import { disposeSearchWindow } from './global-search'
 import { disposeMenuWindow } from './handlers/menu-handler'
 import { logoutApp } from './handlers/auth-handler'
-import { createFooter, resetFooter } from './footer'
-import { isLiveWindow } from './is-live-window'
+import { createFooter } from './footer'
 
 let baseWindow: BaseWindow | null = null
 let currentTheme = 'light'
-let appHandlersRegistered = false
 
 function updateTitleBarOverlay(theme: 'light' | 'dark'): void {
   if (process.platform !== 'win32') return
-  if (!isLiveWindow(baseWindow)) return
-  const win = baseWindow
+  if (!baseWindow) return
   const hasTitleBarOverlay =
-    typeof (win as unknown as { setTitleBarOverlay?: unknown }).setTitleBarOverlay === 'function'
+    typeof (baseWindow as unknown as { setTitleBarOverlay?: unknown }).setTitleBarOverlay === 'function'
 
   if (!hasTitleBarOverlay) return
 
-  ;(win as unknown as {
+  ;(baseWindow as unknown as {
     setTitleBarOverlay: (options: { color: string; symbolColor: string }) => void
   }).setTitleBarOverlay({
     color: theme === 'dark' ? '#171717' : '#f9fafb',
@@ -100,53 +97,41 @@ export async function initializeMainWindow(): Promise<void> {
  * @param baseWindow - The main application window instance
  */
 function setupMainWindowEventHandlers(): void {
-  if (!appHandlersRegistered) {
-    appHandlersRegistered = true
-    app.on('activate', async () => {
-      if (!isLiveWindow(baseWindow)) {
-        await initializeMainWindow()
-        return
-      }
-      showWindow()
-    })
+  app.on('activate', () => {
+    showWindow()
+  })
 
-    let isLoggingOut = false
+  let isLoggingOut = false
 
-    app.on('before-quit', async (event: Electron.Event) => {
-      if (!isLoggingOut) {
-        event.preventDefault()
-        isLoggingOut = true
-        // saveTabs()
-        await logoutApp()
-        app.quit()
-      }
-    })
+  app.on('before-quit', async (event: Electron.Event) => {
+    if (!isLoggingOut) {
+      event.preventDefault()
+      isLoggingOut = true
+      // saveTabs()
+      await logoutApp()
+      app.quit()
+    }
+  })
 
-    app.on('will-quit', () => {
-      console.log('app will-quit')
-    })
+  app.on('will-quit', () => {
+    console.log('app will-quit')
+  })
 
-    app.on('quit', () => {
-      console.log('app quit')
-    })
-
-    ipcMain.on('theme-changed', (_event, theme: 'light' | 'dark') => {
-      if (!isLiveWindow(baseWindow)) return
-      const win = baseWindow
-      currentTheme = theme
-      const isDarkTheme = theme === 'dark'
-      win.setBackgroundColor(isDarkTheme ? '#171717' : '#fff')
-      updateTitleBarOverlay(theme)
-    })
-  }
+  app.on('quit', () => {
+    console.log('app quit')
+  })
 
   baseWindow?.on('closed', () => {
     disposeSearchWindow()
     disposeMenuWindow()
-    resetTabsState()
-    resetToolbar()
-    resetFooter()
-    baseWindow = null
+  })
+
+  ipcMain.on('theme-changed', (_event, theme: 'light' | 'dark') => {
+    if (!baseWindow) return
+    currentTheme = theme
+    const isDarkTheme = theme === 'dark'
+    baseWindow.setBackgroundColor(isDarkTheme ? '#171717' : '#fff')
+    updateTitleBarOverlay(theme)
   })
 }
 
@@ -167,18 +152,17 @@ export function getCurrentTheme(): string {
  * Handles different behavior for development and production environments.
  */
 export function showWindow(): void {
-  if (!isLiveWindow(baseWindow)) {
+  if (!baseWindow) {
     return
   }
-  const win = baseWindow
 
   //? This is to prevent the window from gaining focus everytime we make a change in code.
   if (!is.dev && !process.env['ELECTRON_RENDERER_URL']) {
-    win.show()
+    baseWindow!.show()
     return
   }
 
-  if (!win.isVisible()) {
-    win.show()
+  if (!baseWindow.isVisible()) {
+    baseWindow!.show()
   }
 }
