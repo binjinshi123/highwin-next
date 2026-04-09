@@ -2,7 +2,6 @@ import { BrowserWindow, screen } from 'electron'
 import path from 'path'
 import { getRootUrl } from './url-helpers'
 import { NavigationRoutes } from './navigation-routes'
-import { isLiveWindow } from './is-live-window'
 
 let searchWindow: BrowserWindow | null = null
 
@@ -13,7 +12,7 @@ export function openSearchWindowWithKey(key: string): void {
 }
 
 export function openSearchWindow(key: string = ''): void {
-  if (isLiveWindow(searchWindow)) {
+  if (searchWindow) {
     if (searchWindow.webContents) {
       searchWindow.show()
       searchWindow.webContents.send('set-initial-query', key)
@@ -26,20 +25,16 @@ export function openSearchWindow(key: string = ''): void {
 }
 
 export function hideSearchWindow(): void {
-  if (isLiveWindow(searchWindow)) {
-    searchWindow.hide()
-  }
+  searchWindow?.hide()
 }
 
 export function disposeSearchWindow(): void {
-  if (isLiveWindow(searchWindow)) {
-    searchWindow.close()
-  }
+  searchWindow?.close()
   searchWindow = null
 }
 
 export function precreateSearchWindow(): void {
-  if (!isLiveWindow(searchWindow)) {
+  if (!searchWindow) {
     createSearchWindow(undefined)
   }
 }
