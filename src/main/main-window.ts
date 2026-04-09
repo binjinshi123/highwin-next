@@ -7,24 +7,22 @@ import { disposeSearchWindow } from './global-search'
 import { disposeMenuWindow } from './handlers/menu-handler'
 import { logoutApp } from './handlers/auth-handler'
 import { createFooter, resetFooter } from './footer'
+import { isLiveWindow } from './is-live-window'
 
 let baseWindow: BaseWindow | null = null
 let currentTheme = 'light'
 let appHandlersRegistered = false
 
-function hasLiveWindow(): boolean {
-  return !!baseWindow && !baseWindow.isDestroyed()
-}
-
 function updateTitleBarOverlay(theme: 'light' | 'dark'): void {
   if (process.platform !== 'win32') return
-  if (!hasLiveWindow()) return
+  if (!isLiveWindow(baseWindow)) return
+  const win = baseWindow
   const hasTitleBarOverlay =
-    typeof (baseWindow as unknown as { setTitleBarOverlay?: unknown }).setTitleBarOverlay === 'function'
+    typeof (win as unknown as { setTitleBarOverlay?: unknown }).setTitleBarOverlay === 'function'
 
   if (!hasTitleBarOverlay) return
 
-  ;(baseWindow as unknown as {
+  ;(win as unknown as {
     setTitleBarOverlay: (options: { color: string; symbolColor: string }) => void
   }).setTitleBarOverlay({
     color: theme === 'dark' ? '#171717' : '#f9fafb',
@@ -105,7 +103,7 @@ function setupMainWindowEventHandlers(): void {
   if (!appHandlersRegistered) {
     appHandlersRegistered = true
     app.on('activate', async () => {
-      if (!hasLiveWindow()) {
+      if (!isLiveWindow(baseWindow)) {
         await initializeMainWindow()
         return
       }
@@ -133,8 +131,8 @@ function setupMainWindowEventHandlers(): void {
     })
 
     ipcMain.on('theme-changed', (_event, theme: 'light' | 'dark') => {
-      if (!hasLiveWindow()) return
-      const win = baseWindow!
+      if (!isLiveWindow(baseWindow)) return
+      const win = baseWindow
       currentTheme = theme
       const isDarkTheme = theme === 'dark'
       win.setBackgroundColor(isDarkTheme ? '#171717' : '#fff')
@@ -169,10 +167,10 @@ export function getCurrentTheme(): string {
  * Handles different behavior for development and production environments.
  */
 export function showWindow(): void {
-  if (!hasLiveWindow()) {
+  if (!isLiveWindow(baseWindow)) {
     return
   }
-  const win = baseWindow!
+  const win = baseWindow
 
   //? This is to prevent the window from gaining focus everytime we make a change in code.
   if (!is.dev && !process.env['ELECTRON_RENDERER_URL']) {
