@@ -8,12 +8,7 @@ import { initStoreIpcHandlers } from './handlers/store-handler'
 import { initTabsIpcHandlers } from './handlers/tabs-handler'
 import { initAppIpcHandlers } from './handlers/app-handler'
 
-let ipcHandlersInitialized = false
-
 export function initIpcHandlers() {
-  if (ipcHandlersInitialized) return
-  ipcHandlersInitialized = true
-
   // 兼容多种环境：优先使用全局 fetch，其次尝试 undici/node-fetch
   let fetchFn: any = (globalThis as any).fetch
   if (!fetchFn) {
