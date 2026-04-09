@@ -11,12 +11,16 @@ import { getToolbarHeight } from '../toolbar'
 
 let menuWindow: BrowserWindow | null
 
+function hasLiveMenuWindow(): boolean {
+  return !!menuWindow && !menuWindow.isDestroyed()
+}
+
 export const initMenuIpcHandlers = (): void => {
   ipcMain.handle('menu:show', () => {
     const user = getUser()
     if (!user) return
 
-    if (menuWindow) {
+    if (hasLiveMenuWindow()) {
       showMenuWindow()
     } else {
       createMenuWindow()
@@ -37,12 +41,14 @@ export const initMenuIpcHandlers = (): void => {
 }
 
 export function disposeMenuWindow(): void {
-  menuWindow?.close()
+  if (hasLiveMenuWindow()) {
+    menuWindow!.close()
+  }
   menuWindow = null
 }
 
 export function precreateMenuWindow(): void {
-  if (!menuWindow) {
+  if (!hasLiveMenuWindow()) {
     createMenuWindow()
   }
 }
