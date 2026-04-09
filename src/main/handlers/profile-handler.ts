@@ -7,10 +7,18 @@ import { getToolbarHeight } from '../toolbar'
 
 let profileWindow: BrowserWindow | null
 
+function hasLiveProfileWindow(): boolean {
+  return !!profileWindow && !profileWindow.isDestroyed()
+}
+
 export const initProfileIpcHandlers = (): void => {
   ipcMain.handle('show-profile', () => {
     const user = getUser()
     if (!user) return
+    if (hasLiveProfileWindow()) {
+      showWindow()
+      return
+    }
     createWindow()
   })
   ipcMain.handle('user:logout', () => {
@@ -20,7 +28,9 @@ export const initProfileIpcHandlers = (): void => {
 }
 
 export function disposeWindow(): void {
-  profileWindow?.close()
+  if (hasLiveProfileWindow()) {
+    profileWindow!.close()
+  }
   profileWindow = null
 }
 
