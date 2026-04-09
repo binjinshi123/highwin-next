@@ -17,9 +17,10 @@ export function openSearchWindowWithKey(key: string): void {
 
 export function openSearchWindow(key: string = ''): void {
   if (hasLiveSearchWindow()) {
-    if (searchWindow.webContents) {
-      searchWindow.show()
-      searchWindow.webContents.send('set-initial-query', key)
+    const win = searchWindow!
+    if (win.webContents) {
+      win.show()
+      win.webContents.send('set-initial-query', key)
     } else {
       console.error('searchWindow.webContents is empty')
     }
