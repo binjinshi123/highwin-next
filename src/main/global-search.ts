@@ -5,6 +5,10 @@ import { NavigationRoutes } from './navigation-routes'
 
 let searchWindow: BrowserWindow | null = null
 
+function hasLiveSearchWindow(): boolean {
+  return !!searchWindow && !searchWindow.isDestroyed()
+}
+
 export function openSearchWindowWithKey(key: string): void {
   if (/^[a-zA-Z0-9]$/.test(key)) {
     openSearchWindow(key)
@@ -12,7 +16,7 @@ export function openSearchWindowWithKey(key: string): void {
 }
 
 export function openSearchWindow(key: string = ''): void {
-  if (searchWindow) {
+  if (hasLiveSearchWindow()) {
     if (searchWindow.webContents) {
       searchWindow.show()
       searchWindow.webContents.send('set-initial-query', key)
@@ -25,16 +29,20 @@ export function openSearchWindow(key: string = ''): void {
 }
 
 export function hideSearchWindow(): void {
-  searchWindow?.hide()
+  if (hasLiveSearchWindow()) {
+    searchWindow!.hide()
+  }
 }
 
 export function disposeSearchWindow(): void {
-  searchWindow?.close()
+  if (hasLiveSearchWindow()) {
+    searchWindow!.close()
+  }
   searchWindow = null
 }
 
 export function precreateSearchWindow(): void {
-  if (!searchWindow) {
+  if (!hasLiveSearchWindow()) {
     createSearchWindow(undefined)
   }
 }
