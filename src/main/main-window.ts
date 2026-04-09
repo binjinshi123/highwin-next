@@ -1,19 +1,24 @@
 import { is } from '@electron-toolkit/utils'
 import { app, BaseWindow, ipcMain } from 'electron'
 import icon from '../../resources/icon.ico?asset'
-import { restoreTabs, showContent } from './tabs'
-import { createToolbar, toolbarHeight } from './toolbar'
+import { resetTabsState, restoreTabs, showContent } from './tabs'
+import { createToolbar, resetToolbar, toolbarHeight } from './toolbar'
 import { disposeSearchWindow } from './global-search'
 import { disposeMenuWindow } from './handlers/menu-handler'
 import { logoutApp } from './handlers/auth-handler'
-import { createFooter } from './footer'
+import { createFooter, resetFooter } from './footer'
 
 let baseWindow: BaseWindow | null = null
 let currentTheme = 'light'
+let appHandlersRegistered = false
+
+function hasLiveWindow(): boolean {
+  return !!baseWindow && !baseWindow.isDestroyed()
+}
 
 function updateTitleBarOverlay(theme: 'light' | 'dark'): void {
   if (process.platform !== 'win32') return
-  if (!baseWindow) return
+  if (!hasLiveWindow()) return
   const hasTitleBarOverlay =
     typeof (baseWindow as unknown as { setTitleBarOverlay?: unknown }).setTitleBarOverlay === 'function'
 
@@ -97,41 +102,53 @@ export async function initializeMainWindow(): Promise<void> {
  * @param baseWindow - The main application window instance
  */
 function setupMainWindowEventHandlers(): void {
-  app.on('activate', () => {
-    showWindow()
-  })
+  if (!appHandlersRegistered) {
+    appHandlersRegistered = true
+    app.on('activate', async () => {
+      if (!hasLiveWindow()) {
+        await initializeMainWindow()
+        return
+      }
+      showWindow()
+    })
 
-  let isLoggingOut = false
+    let isLoggingOut = false
 
-  app.on('before-quit', async (event: Electron.Event) => {
-    if (!isLoggingOut) {
-      event.preventDefault()
-      isLoggingOut = true
-      // saveTabs()
-      await logoutApp()
-      app.quit()
-    }
-  })
+    app.on('before-quit', async (event: Electron.Event) => {
+      if (!isLoggingOut) {
+        event.preventDefault()
+        isLoggingOut = true
+        // saveTabs()
+        await logoutApp()
+        app.quit()
+      }
+    })
 
-  app.on('will-quit', () => {
-    console.log('app will-quit')
-  })
+    app.on('will-quit', () => {
+      console.log('app will-quit')
+    })
 
-  app.on('quit', () => {
-    console.log('app quit')
-  })
+    app.on('quit', () => {
+      console.log('app quit')
+    })
+
+    ipcMain.on('theme-changed', (_event, theme: 'light' | 'dark') => {
+      if (!hasLiveWindow()) return
+      const win = baseWindow!
+      currentTheme = theme
+      const isDarkTheme = theme === 'dark'
+      win.setBackgroundColor(isDarkTheme ? '#171717' : '#fff')
+      updateTitleBarOverlay(theme)
+    })
+  }
 
   baseWindow?.on('closed', () => {
     disposeSearchWindow()
     disposeMenuWindow()
-  })
-
-  ipcMain.on('theme-changed', (_event, theme: 'light' | 'dark') => {
-    if (!baseWindow) return
-    currentTheme = theme
-    const isDarkTheme = theme === 'dark'
-    baseWindow.setBackgroundColor(isDarkTheme ? '#171717' : '#fff')
-    updateTitleBarOverlay(theme)
+    resetTabsState()
+    resetToolbar()
+    resetFooter()
+    baseWindow = null
   })
 }
 
@@ -152,17 +169,18 @@ export function getCurrentTheme(): string {
  * Handles different behavior for development and production environments.
  */
 export function showWindow(): void {
-  if (!baseWindow) {
+  if (!hasLiveWindow()) {
     return
   }
+  const win = baseWindow!
 
   //? This is to prevent the window from gaining focus everytime we make a change in code.
   if (!is.dev && !process.env['ELECTRON_RENDERER_URL']) {
-    baseWindow!.show()
+    win.show()
     return
   }
 
-  if (!baseWindow.isVisible()) {
-    baseWindow!.show()
+  if (!win.isVisible()) {
+    win.show()
   }
 }
