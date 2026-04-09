@@ -2,12 +2,9 @@ import { BrowserWindow, screen } from 'electron'
 import path from 'path'
 import { getRootUrl } from './url-helpers'
 import { NavigationRoutes } from './navigation-routes'
+import { isLiveWindow } from './is-live-window'
 
 let searchWindow: BrowserWindow | null = null
-
-function hasLiveSearchWindow(): boolean {
-  return !!searchWindow && !searchWindow.isDestroyed()
-}
 
 export function openSearchWindowWithKey(key: string): void {
   if (/^[a-zA-Z0-9]$/.test(key)) {
@@ -16,11 +13,10 @@ export function openSearchWindowWithKey(key: string): void {
 }
 
 export function openSearchWindow(key: string = ''): void {
-  if (hasLiveSearchWindow()) {
-    const win = searchWindow!
-    if (win.webContents) {
-      win.show()
-      win.webContents.send('set-initial-query', key)
+  if (isLiveWindow(searchWindow)) {
+    if (searchWindow.webContents) {
+      searchWindow.show()
+      searchWindow.webContents.send('set-initial-query', key)
     } else {
       console.error('searchWindow.webContents is empty')
     }
@@ -30,20 +26,20 @@ export function openSearchWindow(key: string = ''): void {
 }
 
 export function hideSearchWindow(): void {
-  if (hasLiveSearchWindow()) {
-    searchWindow!.hide()
+  if (isLiveWindow(searchWindow)) {
+    searchWindow.hide()
   }
 }
 
 export function disposeSearchWindow(): void {
-  if (hasLiveSearchWindow()) {
-    searchWindow!.close()
+  if (isLiveWindow(searchWindow)) {
+    searchWindow.close()
   }
   searchWindow = null
 }
 
 export function precreateSearchWindow(): void {
-  if (!hasLiveSearchWindow()) {
+  if (!isLiveWindow(searchWindow)) {
     createSearchWindow(undefined)
   }
 }
