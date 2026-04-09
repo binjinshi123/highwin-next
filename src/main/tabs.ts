@@ -247,20 +247,6 @@ export function getSelectedTab(): WebContentsView | null {
   return selectedTab
 }
 
-export function resetTabsState(): void {
-  for (const tab of tabs) {
-    try {
-      if (!tab.webContents.isDestroyed()) {
-        tab.webContents.close()
-      }
-    } catch {
-      // ignore cleanup errors during window teardown
-    }
-  }
-  tabs.splice(0, tabs.length)
-  selectedTab = null
-}
-
 /**
  * Reloads the currently selected tab.
  */
