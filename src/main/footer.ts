@@ -69,6 +69,10 @@ export function getFooter(): WebContentsView | null {
   return footerView
 }
 
+export function resetFooter(): void {
+  footerView = null
+}
+
 /**
  * Resizes the footer to match the window width while maintaining fixed height.
  * Should be called when the window is resized to ensure footer fills the width.
