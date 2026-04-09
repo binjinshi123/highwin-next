@@ -10,6 +10,11 @@ import { createFooter } from './footer'
 
 let baseWindow: BaseWindow | null = null
 let currentTheme = 'light'
+let appEventHandlersRegistered = false
+
+function isBaseWindowUsable(window: BaseWindow | null): window is BaseWindow {
+  return Boolean(window && !window.isDestroyed())
+}
 
 function updateTitleBarOverlay(theme: 'light' | 'dark'): void {
   if (process.platform !== 'win32') return
@@ -67,8 +72,9 @@ export async function initializeMainWindow(): Promise<void> {
     icon: icon
   })
 
-  // Set the main window, Must be called here before any other functions.
+  // Register app-level listeners once, then bind window-specific listeners.
   setupMainWindowEventHandlers()
+  setupWindowEventHandlers()
 
   const [toolbar, mainContent, footer] = await Promise.all([
     createToolbar(),
@@ -97,7 +103,17 @@ export async function initializeMainWindow(): Promise<void> {
  * @param baseWindow - The main application window instance
  */
 function setupMainWindowEventHandlers(): void {
+  if (appEventHandlersRegistered) {
+    return
+  }
+  appEventHandlersRegistered = true
+
   app.on('activate', () => {
+    if (!isBaseWindowUsable(baseWindow)) {
+      baseWindow = null
+      void initializeMainWindow()
+      return
+    }
     showWindow()
   })
 
@@ -121,17 +137,20 @@ function setupMainWindowEventHandlers(): void {
     console.log('app quit')
   })
 
-  baseWindow?.on('closed', () => {
-    disposeSearchWindow()
-    disposeMenuWindow()
-  })
-
   ipcMain.on('theme-changed', (_event, theme: 'light' | 'dark') => {
-    if (!baseWindow) return
+    if (!isBaseWindowUsable(baseWindow)) return
     currentTheme = theme
     const isDarkTheme = theme === 'dark'
     baseWindow.setBackgroundColor(isDarkTheme ? '#171717' : '#fff')
     updateTitleBarOverlay(theme)
+  })
+}
+
+function setupWindowEventHandlers(): void {
+  baseWindow?.on('closed', () => {
+    disposeSearchWindow()
+    disposeMenuWindow()
+    baseWindow = null
   })
 }
 
@@ -152,17 +171,18 @@ export function getCurrentTheme(): string {
  * Handles different behavior for development and production environments.
  */
 export function showWindow(): void {
-  if (!baseWindow) {
+  if (!isBaseWindowUsable(baseWindow)) {
+    baseWindow = null
     return
   }
 
   //? This is to prevent the window from gaining focus everytime we make a change in code.
   if (!is.dev && !process.env['ELECTRON_RENDERER_URL']) {
-    baseWindow!.show()
+    baseWindow.show()
     return
   }
 
   if (!baseWindow.isVisible()) {
-    baseWindow!.show()
+    baseWindow.show()
   }
 }
