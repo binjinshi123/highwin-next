@@ -8,19 +8,16 @@ import { highwinUrlMap } from '@shared/config/highwin-urls'
 import { URLs } from '@shared/config/url-config'
 import { getCurrentTheme } from '../main-window'
 import { getToolbarHeight } from '../toolbar'
+import { isLiveWindow } from '../is-live-window'
 
 let menuWindow: BrowserWindow | null
-
-function hasLiveMenuWindow(): boolean {
-  return !!menuWindow && !menuWindow.isDestroyed()
-}
 
 export const initMenuIpcHandlers = (): void => {
   ipcMain.handle('menu:show', () => {
     const user = getUser()
     if (!user) return
 
-    if (hasLiveMenuWindow()) {
+    if (isLiveWindow(menuWindow)) {
       showMenuWindow()
     } else {
       createMenuWindow()
@@ -41,14 +38,14 @@ export const initMenuIpcHandlers = (): void => {
 }
 
 export function disposeMenuWindow(): void {
-  if (hasLiveMenuWindow()) {
-    menuWindow!.close()
+  if (isLiveWindow(menuWindow)) {
+    menuWindow.close()
   }
   menuWindow = null
 }
 
 export function precreateMenuWindow(): void {
-  if (!hasLiveMenuWindow()) {
+  if (!isLiveWindow(menuWindow)) {
     createMenuWindow()
   }
 }
@@ -81,6 +78,8 @@ function createMenuWindow(): void {
 }
 
 function showMenuWindow(): void {
+  if (!isLiveWindow(menuWindow)) return
+
   const mainWindow = BaseWindow.getFocusedWindow()
   if (!mainWindow) return
 
@@ -88,9 +87,9 @@ function showMenuWindow(): void {
   const menuX = mainBounds.x + 1
   const menuY = mainBounds.y + getToolbarHeight()
 
-  menuWindow?.setPosition(Math.floor(menuX), Math.floor(menuY))
+  menuWindow.setPosition(Math.floor(menuX), Math.floor(menuY))
 
-  menuWindow?.show()
+  menuWindow.show()
 }
 
 function toChartParams(urlSearchParams: string): string {
